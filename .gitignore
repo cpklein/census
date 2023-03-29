@@ -1,0 +1,7 @@
+dataops01/
+meltano/
+bin/
+include/
+lib/
+pyvenv.cfg
+
