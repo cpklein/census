@@ -6,7 +6,7 @@ import duckdb
 
 
 config_file = 'logging_template.yaml'
-log_directory = '../meltano/logs'
+log_directory = '../logs'
 config_directory = '../meltano'
 run_directory = '../meltano'
 db_directory = '../database'
