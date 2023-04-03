@@ -2,6 +2,8 @@ import subprocess, os, psutil
 import uuid, yaml, json
 from flask import Flask, jsonify, request
 import duckdb
+from io import StringIO
+import paramiko
 
 
 
@@ -145,8 +147,73 @@ def list_files():
     subdir = request.args.get('subdir', '')
     onlyfiles = [f for f in os.listdir(os.path.join(file_directory, subdir)) if os.path.isfile(os.path.join(os.path.join(file_directory, subdir), f))]
     return jsonify(onlyfiles)
+
+
+@app.route('/transfer/ssh/list', methods = ['GET'])
+def list_remote_directory():
+    body = request.get_json()
+    private_key = body.get('private_key')
+    username = body.get('username')
+    server = body.get('server')
+    port = body.get('port')
+    directory = body.get('directory')
+    #create a virtual file
+    not_really_a_file = StringIO(private_key)
+    # import as paramiko key
+    p_key = paramiko.RSAKey.from_private_key(not_really_a_file)
+    transport = paramiko.Transport((server,int(port)))
+    transport.connect(username=username, pkey=p_key)
+    sftp = paramiko.SFTPClient.from_transport(transport)
+    # Get the list
+    resp = sftp.listdir(path=directory)
+
+    return jsonify(resp)
+    
+@app.route('/transfer/ssh/get', methods = ['POST'])
+def get_remote_ssh():
+    body = request.get_json()
+    private_key = body.get('private_key')
+    username = body.get('username')
+    server = body.get('server')
+    port = body.get('port')
+    remote_path = body.get('remote_path')
+    search_pattern = body.get('search_pattern')
+    local_path = body.get('local_path')
+    #create a virtual file
+    not_really_a_file = StringIO(private_key)
+    # import as paramiko key
+    p_key = paramiko.RSAKey.from_private_key(not_really_a_file)
+    
+    #Get the list of files to be moves
+    ssh = paramiko.SSHClient()
+    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    ssh.connect(server, username=username, pkey=p_key)  
+    rawcommand = 'find {path} -maxdepth 1 -name "{pattern}"'
+    command = rawcommand.format(path=remote_path, pattern=search_pattern)
+    stdin, stdout, stderr = ssh.exec_command(command)
+    filelist = stdout.read().splitlines()
+    ssh.close()
     
     
+    #Move the files
+    transport = paramiko.Transport((server,int(port)))
+    transport.connect(username=username, pkey=p_key)
+    files_moved = []
+    try:
+        sftp = paramiko.SFTPClient.from_transport(transport)
+        #Iterate over the file list
+        for afile in filelist:
+            (head, filename) = os.path.split(afile)
+            files_moved.append(filename.decode())
+            
+            # Move File
+            sftp.get(afile, os.path.join(local_path, filename.decode()))
+        resp = {"status" : "success", "files" : files_moved}
+    except Exception as error:
+        resp = {"status":"error","error" : error.args}
+
+    return jsonify(resp)
+
 def gen_log_config():
     with open(os.path.join(config_directory, config_file)) as f:
         conf = yaml.load(f, Loader=yaml.FullLoader)
