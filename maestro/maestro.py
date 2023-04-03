@@ -91,7 +91,11 @@ def sql_execute(database):
             result = duck_conn.sql(query)
             resp = result.fetchmany(int(fetchmany))
         else:
-            resp = duck_conn.sql(query).fetchall()
+            result = duck_conn.sql(query)
+            if result != None:
+                resp = result.fetchall()
+            else:
+                resp = { "status" : "executed"}
         if request.args.get('format', False) == 'list_of_records':
             resp = json_response(result, resp)
     except Exception as error:
@@ -145,8 +149,12 @@ def receive_json():
 @app.route('/files/list', methods = ['GET'])
 def list_files():
     subdir = request.args.get('subdir', '')
-    onlyfiles = [f for f in os.listdir(os.path.join(file_directory, subdir)) if os.path.isfile(os.path.join(os.path.join(file_directory, subdir), f))]
-    return jsonify(onlyfiles)
+    try:
+        resp = [f for f in os.listdir(os.path.join(file_directory, subdir)) if os.path.isfile(os.path.join(os.path.join(file_directory, subdir), f))]
+    except Exception as error:
+        resp = {"error" : error.args}
+        
+    return jsonify(resp)
 
 
 @app.route('/transfer/ssh/list', methods = ['GET'])
