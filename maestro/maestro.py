@@ -4,6 +4,20 @@ from flask import Flask, jsonify, request
 import duckdb
 from io import StringIO
 import paramiko
+import requests
+import re
+from requests.auth import HTTPBasicAuth
+
+
+'''
+import logging
+import logging.config
+logging.config.fileConfig('../data/maestro/logging.conf')
+logger = logging.getLogger('census_logger')
+logger.setLevel(logging.DEBUG)
+d = {'clientip': '192.168.0.1', 'user': 'fbloggs'}
+logger.debug("TEST", extra=d)
+'''
 
 
 
@@ -22,6 +36,98 @@ app = Flask(__name__)
 @app.route("/")
 def hello():
     return "<h3>Census Test Page</h3>"
+
+@app.route('/transfer/http', methods = ['POST'])
+def get_http_file():
+        
+    body = request.get_json()
+    # Headers
+    headers = {}
+    # Query Parameters
+    params= {}
+    # Replace parameters inside the 'oauth2' information. This function is called by re.sub
+    def repf(match):
+        return body['account']['oauth2'][match.group(1)]
+    def insert_token():
+        # Insert the token in the proper position
+        if body['account']['oauth2']['token_position'] == 'header':
+            for param in body['account']['oauth2']['header']:
+                # Replace if needed
+                headers[param['key']] = re.sub('<>(.+)</>', repf, param['value'])
+        
+        
+    # Build URL
+    protocol = body['account']['protocol']
+    host = body['account']['host'] 
+    port = ':' + str(body['account']['port']) 
+    path = body['rest']['path']     
+    url = protocol + '://' + host + path
+
+    # Build parameters
+    for parameter in body['rest']['query']:
+        params[parameter['key']] = parameter['value']
+    #Build headers
+    for parameter in body['rest']['header']:
+        headers[parameter['key']] = parameter['value']
+        
+    #Data
+    body_json =  body['rest']['body'] 
+    
+    #Authentication
+    if body['account']['auth'] == 'basic':        
+        auth = HTTPBasicAuth(body['account']['username'],
+                             body['account']['password'])
+    elif body['account']['auth'] == 'oauth2':
+        auth = None
+        insert_token()
+    else:
+        auth = None
+    #File
+    filename = os.path.join(body['file']['local_path'], body['file']['filename'])
+    
+    #Chunk Size
+    chunk_size = body['file']['chunck_size']
+
+    try:        
+        # read the file
+        stream = requests.get(url, params=params, headers=headers, data=body_json, auth=auth, stream=True)
+        # authentication failure and OAuth2
+        if stream.status_code == 401 and body['account']['auth'] == "oauth2":
+            # refresh token
+            body['account']['oauth2']['access_token'] = refresh_access_token(body['account']['oauth2'])
+            insert_token()
+            # Try again 
+            stream = requests.get(url, params=params, headers=headers, data=body_json, auth=auth, stream=True)
+        # Process only with 200 code
+        if stream.status_code == 200:
+            with open(filename, 'wb') as fd:
+                for chunk in stream.iter_content(chunk_size=chunk_size):
+                    fd.write(chunk)
+            resp = {"status" : "transfered"}
+        else:
+            resp = {"error" : stream.text}            
+    except Exception as error:
+        resp = {"error" : error.args}
+    
+    return jsonify(resp)
+            
+
+def refresh_access_token(oauth2):
+    params = {}
+    # Replace parameters inside the 'oauth2' information. This function is called by re.sub
+    def repf(match):
+        return oauth2[match.group(1)]
+    # Build the parameters of the refresh token request
+    for param in oauth2['refresh_token_body_params']:
+        params[param['key']] = re.sub('<>(.+)</>', repf, param['value'])
+        
+    resp = requests.post(
+        oauth2['refresh_token_endpoint'], 
+        params=params
+        )
+    resp_data = resp.json()
+    return resp_data['access_token']
+
 
 # Expected Body
 #{

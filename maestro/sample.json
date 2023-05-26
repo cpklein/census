@@ -1,0 +1,74 @@
+{
+  "terminal" : "https://datachannel.integrasky.cloud/i4BuKLHkM4",
+  "data_required" : false,
+  "response_content_type" : "file",
+  "account" : {
+    "type" : "rest",
+    "name" : "Zoho CRM",
+    "host" : "www.zohoapis.com",
+    "protocol" : "https",
+    "port" : 443,
+    "username" : "username",
+    "password" : "password",
+    "tls" : false,
+    "auth" : "oauth2",
+    "bearer_token" : {
+        "token" : ""
+    },
+    "oauth2" : {
+      "client_id" : "1000.ETIT42LO59GK1RTYOQQHROCOFCEPUS",
+      "client_secret" : "2cc4ccc8fc71d0c3aed29d3884ec345965de3ebd46",
+      "access_token" : "1000.c85429f7240f4d41e4b6d9e7e5a920cd.11fccad319196cb0198bbe6890cae844",
+      "refresh_token" : "1000.099732aa8eaecbc2d1dd5e2440bdbbd7.002472a9ec5e9a95a9b1b1f530f22010",
+      "refresh_token_endpoint" : "https://accounts.zoho.com/oauth/v2/token",
+      "token_position" : "header",
+      "header" : [
+        {
+          "key" : "Authorization",
+          "value" : "Zoho-oauthtoken <>access_token</>"
+        }
+      ],
+      "refresh_token_body_params" : [
+        {
+          "key" : "refresh_token",
+          "value" : "<>refresh_token</>"
+        },
+        {
+          "key" : "client_id",
+          "value" : "<>client_id</>"
+        },
+        {
+          "key" : "client_secret",
+          "value" : "<>client_secret</>"
+        },
+        {
+          "key" : "grant_type",
+          "value" : "refresh_token"
+        }
+      ]
+    },
+    "cookie" : {
+        "auth_endpoint" : "",
+        "body" : ""
+    }
+  },
+  "database" : {
+    "db_name" : "mainERP",
+    "query" : "SELECT * FROM mainERP.Consulta_NCM_Operacao;",
+    "oracle" : {
+        "schema" : ""
+    }
+  },
+  "rest" : {
+    "method" : "GET",
+    "path" : "/crm/bulk/v2/read/3045298000237292072/result",
+    "header" : [],
+    "query": [],
+    "body" : {} 
+  },
+  "file" : {
+    "local_path" : "",
+    "filename" : "file.zip",
+    "chunck_size" : 1024
+  }
+}
