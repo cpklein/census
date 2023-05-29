@@ -7,26 +7,58 @@ import paramiko
 import requests
 import re
 from requests.auth import HTTPBasicAuth
-
-
-'''
 import logging
-import logging.config
-logging.config.fileConfig('../data/maestro/logging.conf')
-logger = logging.getLogger('census_logger')
-logger.setLevel(logging.DEBUG)
-d = {'clientip': '192.168.0.1', 'user': 'fbloggs'}
-logger.debug("TEST", extra=d)
-'''
+from logging.config import dictConfig
 
 
+# Log Extra
+#d = {'censusid': 'skyone_oci'}
+#logging.config.fileConfig('logging.conf')
+#logger = logging.getLogger('census_logger')
+#logger.setLevel(logging.DEBUG)
 
+censusid = "SKYONE-OCI-0001" 
+
+dictConfig({
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "default": {
+            "format": "[%(asctime)s] — " + censusid + " — %(name)s — %(levelname)s — %(funcName)s:%(lineno)d — %(message)s",
+        }
+    },
+    "handlers": {
+        "file": {
+            "class": "logging.handlers.RotatingFileHandler",
+            "formatter": "default",
+            "filename": "/Users/caio/Development/integra/data/maestro/census.log",
+            "maxBytes": 100000,
+            "backupCount": 10,
+            "delay": "False",
+       },
+        "syslog": {
+            "class": "logging.handlers.SysLogHandler",
+            "formatter": "default",
+            "address": ('ec2-3-239-79-152.compute-1.amazonaws.com', 514),
+            "facility": "user"
+        }
+    },
+    "root": {
+        "level": "WARN",
+        "handlers": ["file", "syslog"]
+    }
+})
+
+
+# File Configuration
 config_file = 'logging_template.yaml'
 log_directory = '../logs'
 config_directory = '../meltano'
 run_directory = '../meltano'
 db_directory = '../database'
 file_directory = '../files'
+
+
 
 duck_conn = None
 result = None
@@ -87,27 +119,37 @@ def get_http_file():
     
     #Chunk Size
     chunk_size = body['file']['chunck_size']
-
+    
+    # Response
+    resp = {}
     try:        
         # read the file
         stream = requests.get(url, params=params, headers=headers, data=body_json, auth=auth, stream=True)
         # authentication failure and OAuth2
         if stream.status_code == 401 and body['account']['auth'] == "oauth2":
+            app.logger.debug("OAuth Authentication Failure")
             # refresh token
             body['account']['oauth2']['access_token'] = refresh_access_token(body['account']['oauth2'])
+            app.logger.debug("OAuth Token Refreshed")
+            resp['new_token'] = body['account']['oauth2']['access_token']
             insert_token()
             # Try again 
             stream = requests.get(url, params=params, headers=headers, data=body_json, auth=auth, stream=True)
+            app.logger.debug("Retry after OAuth Token Refreshed")
+                        
         # Process only with 200 code
         if stream.status_code == 200:
             with open(filename, 'wb') as fd:
                 for chunk in stream.iter_content(chunk_size=chunk_size):
                     fd.write(chunk)
-            resp = {"status" : "transfered"}
+            resp["status"] = "transfered"
+            app.logger.debug("HTTP File Transfered Succeeded")
         else:
-            resp = {"error" : stream.text}            
+            resp["error"] = stream.text
+            app.logger.warning("Error on HTTP File Request: " + stream.text)
     except Exception as error:
-        resp = {"error" : error.args}
+        resp["error"] = error.args
+        app.logger.warning("Error " + error.args)
     
     return jsonify(resp)
             
@@ -259,6 +301,8 @@ def list_files():
         resp = [f for f in os.listdir(os.path.join(file_directory, subdir)) if os.path.isfile(os.path.join(os.path.join(file_directory, subdir), f))]
     except Exception as error:
         resp = {"error" : error.args}
+    
+    app.logger.debug("test - census_logger")
         
     return jsonify(resp)
 
@@ -280,7 +324,7 @@ def list_remote_directory():
     sftp = paramiko.SFTPClient.from_transport(transport)
     # Get the list
     resp = sftp.listdir(path=directory)
-
+    
     return jsonify(resp)
     
 @app.route('/transfer/ssh/get', methods = ['POST'])
@@ -343,4 +387,6 @@ if __name__ == "__main__":
     import os
     if 'WINGDB_ACTIVE' in os.environ:
         app.debug = False
+    # Set DEBUG as default
+    app.logger.setLevel(logging.DEBUG)
     app.run(host="0.0.0.0", port=8000)
