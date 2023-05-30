@@ -9,7 +9,7 @@ import re
 from requests.auth import HTTPBasicAuth
 import logging
 from logging.config import dictConfig
-import census_local
+from census_local import *
 
 # Log Extra
 #d = {'censusid': 'skyone_oci'}
@@ -23,14 +23,14 @@ dictConfig({
     "disable_existing_loggers": False,
     "formatters": {
         "default": {
-            "format": "[%(asctime)s] — " + census_local.censusid + " — %(name)s — %(levelname)s — %(funcName)s:%(lineno)d — %(message)s",
+            "format": "[%(asctime)s] — " + censusid + " — %(name)s — %(levelname)s — %(funcName)s:%(lineno)d — %(message)s",
         }
     },
     "handlers": {
         "file": {
             "class": "logging.handlers.RotatingFileHandler",
             "formatter": "default",
-            "filename": "/var/log/census.log",
+            "filename": log_file,
             "maxBytes": 100000,
             "backupCount": 10,
             "delay": "False",
@@ -38,7 +38,7 @@ dictConfig({
         "syslog": {
             "class": "logging.handlers.SysLogHandler",
             "formatter": "default",
-            "address": (census_local.syslog_server, 514),
+            "address": (syslog_server, 514),
             "facility": "user"
         }
     },
