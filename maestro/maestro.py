@@ -43,6 +43,18 @@ dictConfig({
             "facility": "user"
         }
     },
+    "loggers": {
+        "gunicorn.error": {
+            "handlers": ["file", "syslog"] ,
+            "level": "INFO",
+            "propagate": False,
+        },
+        "gunicorn.access": {
+            "handlers": ["file", "syslog"] ,
+            "level": "INFO",
+            "propagate": False,
+        }
+    },
     "root": {
         "level": "WARN",
         "handlers": ["file", "syslog"]
@@ -51,12 +63,12 @@ dictConfig({
 
 
 # File Configuration
-config_file = 'logging_template.yaml'
-log_directory = '../logs'
-config_directory = '../meltano'
-run_directory = '../meltano'
-db_directory = '../database'
-file_directory = '../files'
+config_file = 'maestro/logging_template.yaml'
+log_directory = 'logs'
+config_directory = 'meltano'
+run_directory = 'meltano'
+db_directory = 'database'
+file_directory = 'files'
 
 
 
@@ -302,8 +314,23 @@ def list_files():
     except Exception as error:
         resp = {"error" : error.args}
     
-    app.logger.debug("test - census_logger")
+    app.logger.error("test ERROR - census_logger")
+    app.logger.debug("test DEBUG - census_logger")
         
+    return jsonify(resp)
+
+#List files directory - Only files
+@app.route('/logger_level', methods = ['POST'])
+def set_logger_level():
+    app.logger.setLevel(logging.DEBUG)
+    level = request.args.get('level', '')
+    if level == 'DEBUG':
+        app.logger.setLevel(logging.DEBUG)
+        new_level = 'DEBUG'
+    else :
+        app.logger.setLevel(logging.WARNING)
+        new_level = 'WARNING'
+    resp = {"level" : new_level}
     return jsonify(resp)
 
 

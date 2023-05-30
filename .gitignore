@@ -3,5 +3,7 @@ meltano/
 bin/
 include/
 lib/
+__pycache__/
+maestro/census.log
 pyvenv.cfg
 
