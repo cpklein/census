@@ -9,7 +9,7 @@ import re
 from requests.auth import HTTPBasicAuth
 import logging
 from logging.config import dictConfig
-
+import census_local
 
 # Log Extra
 #d = {'censusid': 'skyone_oci'}
@@ -17,21 +17,20 @@ from logging.config import dictConfig
 #logger = logging.getLogger('census_logger')
 #logger.setLevel(logging.DEBUG)
 
-censusid = "SKYONE-OCI-0001" 
 
 dictConfig({
     "version": 1,
     "disable_existing_loggers": False,
     "formatters": {
         "default": {
-            "format": "[%(asctime)s] — " + censusid + " — %(name)s — %(levelname)s — %(funcName)s:%(lineno)d — %(message)s",
+            "format": "[%(asctime)s] — " + census_local.censusid + " — %(name)s — %(levelname)s — %(funcName)s:%(lineno)d — %(message)s",
         }
     },
     "handlers": {
         "file": {
             "class": "logging.handlers.RotatingFileHandler",
             "formatter": "default",
-            "filename": "/Users/caio/Development/integra/data/maestro/census.log",
+            "filename": "/var/log/census.log",
             "maxBytes": 100000,
             "backupCount": 10,
             "delay": "False",
@@ -39,7 +38,7 @@ dictConfig({
         "syslog": {
             "class": "logging.handlers.SysLogHandler",
             "formatter": "default",
-            "address": ('ec2-3-239-79-152.compute-1.amazonaws.com', 514),
+            "address": (census_local.syslog_server, 514),
             "facility": "user"
         }
     },
