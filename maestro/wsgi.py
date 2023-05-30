@@ -1,4 +1,4 @@
-from maestro.maestro import app
+from maestro import app
 
 if __name__ == "__main__":
     app.run()
