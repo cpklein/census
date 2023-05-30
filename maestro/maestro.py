@@ -62,12 +62,11 @@ dictConfig({
 
 
 # File Configuration
-config_file = 'maestro/logging_template.yaml'
-log_directory = 'logs'
-config_directory = 'meltano'
-run_directory = 'meltano'
-db_directory = 'database'
-file_directory = 'files'
+config_file = 'logging_template.yaml'
+log_directory = '../logs'
+config_directory = '../meltano'
+run_directory = '../meltano'
+file_directory = '../files'
 
 
 
