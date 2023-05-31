@@ -312,8 +312,8 @@ def list_files():
     except Exception as error:
         resp = {"error" : error.args}
     
-    app.logger.error("test ERROR - census_logger")
-    app.logger.debug("test DEBUG - census_logger")
+    app.logger.error("ERROR")
+    app.logger.debug("DEBUG")
         
     return jsonify(resp)
 

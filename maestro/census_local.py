@@ -1,8 +1,13 @@
 #Local Environment variables
+import socket
 
-censusid = "SKYONE-OCI-0001" 
+if socket.gethostname() in ['german_shepherd']:
+    censusid = "DEVELOPER" 
+    db_directory = '../database'
+    log_file = "/Users/caio/Development/integra/data/maestro/census.log"
+else:
+    censusid = "PROTOTYPE 01" 
+    log_file = "/home/ubuntu/census/logs/census.log"
+    db_directory = '/data/census/database'
+    
 syslog_server = "ec2-3-239-79-152.compute-1.amazonaws.com"
-log_file = "/var/log/census.log"
-#db_directory = '../database'
-db_directory = '/data/census/database'
-#log_file = "/Users/caio/Development/integra/data/maestro/census.log"
