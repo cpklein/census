@@ -300,7 +300,7 @@ def receive_json():
         with open(os.path.join(file_directory, filename), 'w') as f_out:
             f_out.write(data_str)
         resp = {"filename" : filename}
-        app.logger.debug("saved json:" + filename + " bytes:" + len(data_str))
+        app.logger.debug("saved json:" + filename + " bytes:" + str(len(data_str)))
     except Exception as error:
         resp = {"error" : error.args}
         app.logger.warning("error saving json:" + filename + " error:" + error.args)
