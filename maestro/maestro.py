@@ -295,12 +295,15 @@ def receive_json():
     body = request.get_json()
     filename = body.get('filename')
     json_data = body.get('json_data')
+    data_str = json.dumps(json_data)
     try:
         with open(os.path.join(file_directory, filename), 'w') as f_out:
-            f_out.write(json.dumps(json_data))
+            f_out.write(data_str)
         resp = {"filename" : filename}
+        app.logger.debug("saved json:" + filename + " bytes:" + len(data_str))
     except Exception as error:
         resp = {"error" : error.args}
+        app.logger.warning("error saving json:" + filename + " error:" + error.args)
     return jsonify(resp)
 
 #List files directory - Only files
@@ -312,8 +315,7 @@ def list_files():
     except Exception as error:
         resp = {"error" : error.args}
     
-    app.logger.error("ERROR")
-    app.logger.debug("DEBUG")
+    app.logger.debug("directory:" + os.path.join(file_directory, subdir))
         
     return jsonify(resp)
 

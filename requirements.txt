@@ -12,7 +12,7 @@ attrs==22.1.0
 Authlib==1.2.0
 Babel==2.11.0
 backoff==2.2.1
-backports.zoneinfo==0.2.1
+backports.zoneinfo;python_version<"3.9"
 bcrypt==3.2.2
 blinker==1.5
 cached-property==1.5.2
