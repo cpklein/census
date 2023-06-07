@@ -9,6 +9,7 @@ import re
 from requests.auth import HTTPBasicAuth
 import logging
 from logging.config import dictConfig
+from zipfile import ZipFile
 from census_local import *
 
 # Log Extra
@@ -83,6 +84,12 @@ def hello():
 def get_http_file():
         
     body = request.get_json()
+    # If extract == true, unzip the file at the end
+    extract = request.args.get('level', 'false')
+    if extract == 'true':
+        unzip = True
+    else:
+        unzip = False
     # Headers
     headers = {}
     # Query Parameters
@@ -153,7 +160,11 @@ def get_http_file():
                 for chunk in stream.iter_content(chunk_size=chunk_size):
                     fd.write(chunk)
             resp["status"] = "transfered"
-            app.logger.debug("HTTP File Transfered Succeeded")
+            app.logger.debug("HTTP File Transfered Succeeded - Filename:" + filename)
+            if unzip:
+                with ZipFile(filename) as myzip:
+                    myzip.extractall(path=body['file']['local_path'])
+                app.logger.debug("File unzipped")
         else:
             resp["error"] = stream.text
             app.logger.warning("Error on HTTP File Request: " + stream.text)
