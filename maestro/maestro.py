@@ -85,7 +85,7 @@ def get_http_file():
         
     body = request.get_json()
     # If extract == true, unzip the file at the end
-    extract = request.args.get('level', 'false')
+    extract = request.args.get('extract', 'false')
     if extract == 'true':
         unzip = True
     else:
