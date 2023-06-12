@@ -69,7 +69,7 @@ log_directory = '../logs'
 config_directory = '../meltano'
 run_directory = '../meltano'
 file_directory = '../files'
-upload_directory = '/files/uploads'
+upload_directory = '../files/uploads'
 
 
 
