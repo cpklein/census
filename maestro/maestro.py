@@ -1,6 +1,6 @@
 import subprocess, os, psutil
 import uuid, yaml, json
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, send_from_directory
 import duckdb
 from io import StringIO
 import paramiko
@@ -11,6 +11,7 @@ import logging
 from logging.config import dictConfig
 from zipfile import ZipFile
 from census_local import *
+
 
 # Log Extra
 #d = {'censusid': 'skyone_oci'}
@@ -68,6 +69,7 @@ log_directory = '../logs'
 config_directory = '../meltano'
 run_directory = '../meltano'
 file_directory = '../files'
+upload_directory = '/files/uploads'
 
 
 
@@ -79,6 +81,11 @@ app = Flask(__name__)
 @app.route("/")
 def hello():
     return "<h3>Census Test Page</h3>"
+
+@app.route('/uploads/<name>')
+def download_file(name):
+    return send_from_directory(file_directory, name)
+
 
 @app.route('/transfer/http', methods = ['POST'])
 def get_http_file():

@@ -6,4 +6,6 @@ lib/
 __pycache__/
 maestro/census.log
 pyvenv.cfg
-
+maestro/census.wpr
+maestro/census.wpu
+.DS_Store

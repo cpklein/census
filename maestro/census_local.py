@@ -1,10 +1,10 @@
 #Local Environment variables
 import socket
 
-if socket.gethostname() in ['german_shepherd']:
+if socket.gethostname() in ['german_shepherd', '1125-CKLEIN.local']:
     censusid = "DEVELOPER" 
     db_directory = '../database'
-    log_file = "/Users/caio/Development/integra/data/maestro/census.log"
+    log_file = "census.log"
 else:
     censusid = "PROTOTYPE 01" 
     log_file = "/home/ubuntu/census/logs/census.log"
