@@ -84,7 +84,13 @@ def hello():
 
 @app.route('/uploads/<name>')
 def download_file(name):
-    return send_from_directory(file_directory, name)
+    try:
+        app.logger.debug("requested:" + name)
+        return send_from_directory(upload_directory, name)
+    except Exception as error:
+        app.logger.debug("upload ERROR:" + error.args) 
+    
+        
 
 
 @app.route('/transfer/http', methods = ['POST'])

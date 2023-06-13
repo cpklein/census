@@ -9,3 +9,5 @@ pyvenv.cfg
 maestro/census.wpr
 maestro/census.wpu
 .DS_Store
+database/
+files/
