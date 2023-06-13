@@ -1,13 +1,9 @@
-dataops01/
 meltano/
 bin/
 include/
 lib/
 __pycache__/
-maestro/census.log
-pyvenv.cfg
-maestro/census.wpr
-maestro/census.wpu
 .DS_Store
-database/
-files/
+maestro/census.wpu
+maestro/census.wpr
+pyvenv.cfg

@@ -13,19 +13,36 @@ from zipfile import ZipFile
 from census_local import *
 
 
-# Log Extra
-#d = {'censusid': 'skyone_oci'}
-#logging.config.fileConfig('logging.conf')
-#logger = logging.getLogger('census_logger')
-#logger.setLevel(logging.DEBUG)
 
+# Create path if new
+def check_path_and_create(path):
+    if not os.path.exists(path):
+        os.makedirs(path)
 
+# File Configuration on package
+meltano_dir = os.path.join(census_dir, 'meltano')
+meltano_log_config_file = os.path.join(meltano_dir, 'logging_template.yaml')
+
+# File Configuration data
+db_dir = os.path.join(data_dir, 'database')
+log_dir = os.path.join (data_dir, 'logs') 
+file_dir = os.path.join(data_dir, 'files')
+upload_dir = os.path.join(file_dir, 'uploads')
+log_file = os.path.join(log_dir, 'census.log')
+
+for path in [db_dir,
+             log_dir,
+             file_dir,
+             upload_dir]:
+    check_path_and_create(path)
+
+# Logging Configuration
 dictConfig({
     "version": 1,
     "disable_existing_loggers": False,
     "formatters": {
         "default": {
-            "format": "[%(asctime)s] — " + censusid + " — %(name)s — %(levelname)s — %(funcName)s:%(lineno)d — %(message)s",
+            "format": "[%(asctime)s] — " + census_id + " — %(name)s — %(levelname)s — %(funcName)s:%(lineno)d — %(message)s",
         }
     },
     "handlers": {
@@ -62,17 +79,9 @@ dictConfig({
     }
 })
 
+    
 
-# File Configuration
-config_file = 'logging_template.yaml'
-log_directory = '../logs'
-config_directory = '../meltano'
-run_directory = '../meltano'
-file_directory = '../files'
-upload_directory = '../files/uploads'
-
-
-
+# Global Variables
 duck_conn = None
 result = None
 
@@ -86,7 +95,7 @@ def hello():
 def download_file(name):
     try:
         app.logger.debug("requested:" + name)
-        return send_from_directory(upload_directory, name)
+        return send_from_directory(upload_dir, name)
     except Exception as error:
         app.logger.debug("upload ERROR:" + error.args) 
     
@@ -218,7 +227,7 @@ def go_process():
     #Get the output logfile
     exec_id = gen_log_config()
     process = subprocess.Popen(['meltano',
-                                '--log-config=' + os.path.join(log_directory, exec_id + '.yaml'),
+                                '--log-config=' + os.path.join(log_dir, exec_id + '.yaml'),
                                 'run', 
                                 tap, 
                                 target], 
@@ -226,7 +235,7 @@ def go_process():
                                #stderr=subprocess.PIPE,
                                universal_newlines=True,
                                #cwd=r'/Users/caio/Development/integra/data/dataops01')
-                               cwd=run_directory)
+                               cwd=meltano_dir)
 
     ended = process.poll()
     if not ended:
@@ -242,7 +251,7 @@ def go_process():
 @app.route('/extractor/<exec_id>',methods = ['GET'])
 def get_extractor_log(exec_id):
     resp = {}
-    with open(os.path.join(log_directory, exec_id + '.log')) as f:
+    with open(os.path.join(log_dir, exec_id + '.log')) as f:
         lines = f.readlines()
         json_log = []
         for line in lines:
@@ -267,7 +276,7 @@ def sql_execute(database):
     global result
     try:
         if duck_conn == None:
-            duck_conn = duckdb.connect(database=os.path.join(db_directory, database), read_only=False)
+            duck_conn = duckdb.connect(database=os.path.join(db_dir, database), read_only=False)
         fetchmany = request.args.get('fetchmany', None)
         if fetchmany:
             result = duck_conn.sql(query)
@@ -291,7 +300,7 @@ def fetch(database):
     global result
     try:
         if duck_conn == None:
-            duck_conn = duckdb.connect(database=os.path.join(db_directory, database), read_only=False)
+            duck_conn = duckdb.connect(database=os.path.join(db_dir, database), read_only=False)
         fetchmany = request.args.get('fetchmany', None)
         if fetchmany:
             resp = result.fetchmany(int(fetchmany))
@@ -321,7 +330,7 @@ def receive_json():
     json_data = body.get('json_data')
     data_str = json.dumps(json_data)
     try:
-        with open(os.path.join(file_directory, filename), 'w') as f_out:
+        with open(os.path.join(file_dir, filename), 'w') as f_out:
             f_out.write(data_str)
         resp = {"filename" : filename}
         app.logger.debug("saved json:" + filename + " bytes:" + str(len(data_str)))
@@ -335,11 +344,11 @@ def receive_json():
 def list_files():
     subdir = request.args.get('subdir', '')
     try:
-        resp = [f for f in os.listdir(os.path.join(file_directory, subdir)) if os.path.isfile(os.path.join(os.path.join(file_directory, subdir), f))]
+        resp = [f for f in os.listdir(os.path.join(file_dir, subdir)) if os.path.isfile(os.path.join(os.path.join(file_dir, subdir), f))]
     except Exception as error:
         resp = {"error" : error.args}
     
-    app.logger.debug("directory:" + os.path.join(file_directory, subdir))
+    app.logger.debug("directory:" + os.path.join(file_dir, subdir))
         
     return jsonify(resp)
 
@@ -424,12 +433,12 @@ def get_remote_ssh():
     return jsonify(resp)
 
 def gen_log_config():
-    with open(os.path.join(config_directory, config_file)) as f:
+    with open(meltano_log_config_file) as f:
         conf = yaml.load(f, Loader=yaml.FullLoader)
     exec_id = str(uuid.uuid4())
     #update config with specific log file for this execution 
-    conf['handlers']['file']['filename'] = os.path.join(log_directory, exec_id + '.log')
-    with open(os.path.join(log_directory, exec_id + '.yaml'), 'w') as f_out:
+    conf['handlers']['file']['filename'] = os.path.join(log_dir, exec_id + '.log')
+    with open(os.path.join(log_dir, exec_id + '.yaml'), 'w') as f_out:
         yaml.dump(conf, f_out)
     return exec_id
 
@@ -437,7 +446,7 @@ def gen_log_config():
 if __name__ == "__main__":
     import os
     if 'WINGDB_ACTIVE' in os.environ:
-        app.debug = False
+        app.debug = True
     # Set DEBUG as default
     app.logger.setLevel(logging.DEBUG)
     app.run(host="0.0.0.0", port=8000)
