@@ -154,7 +154,7 @@ def get_http_file():
     else:
         auth = None
     #File
-    filename = os.path.join(body['file']['local_path'], body['file']['filename'])
+    filename = os.path.join(file_dir, body['file']['local_path'], body['file']['filename'])
     
     #Chunk Size
     chunk_size = body['file']['chunck_size']
