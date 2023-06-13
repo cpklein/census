@@ -97,7 +97,7 @@ def download_file(name):
         app.logger.debug("requested:" + name)
         return send_from_directory(upload_dir, name)
     except Exception as error:
-        app.logger.debug("upload ERROR:" + error.args) 
+        app.logger.debug("upload ERROR:" + error.args[1]) 
     
         
 
@@ -191,8 +191,8 @@ def get_http_file():
             resp["error"] = stream.text
             app.logger.warning("Error on HTTP File Request: " + stream.text)
     except Exception as error:
-        resp["error"] = error.args
-        app.logger.warning("Error " + error.args)
+        resp["error"] = error.args[1]
+        app.logger.warning("Error :" + error.args[1])
     
     return jsonify(resp)
             
@@ -290,7 +290,7 @@ def sql_execute(database):
         if request.args.get('format', False) == 'list_of_records':
             resp = json_response(result, resp)
     except Exception as error:
-        resp = {"error" : error.args}
+        resp = {"error" : error.args[1]}
     
     return jsonify(resp)
 
@@ -310,7 +310,7 @@ def fetch(database):
             resp = json_response(result, resp)
             
     except Exception as error:
-        resp = {"error" : error.args}
+        resp = {"error" : error.args[1]}
     
     return jsonify(resp)
 
@@ -335,8 +335,8 @@ def receive_json():
         resp = {"filename" : filename}
         app.logger.debug("saved json:" + filename + " bytes:" + str(len(data_str)))
     except Exception as error:
-        resp = {"error" : error.args}
-        app.logger.warning("error saving json:" + filename + " error:" + error.args)
+        resp = {"error" : error.args[1]}
+        app.logger.warning("error saving json:" + filename + " error:" + error.args[1])
     return jsonify(resp)
 
 #List files directory - Only files
@@ -346,7 +346,7 @@ def list_files():
     try:
         resp = [f for f in os.listdir(os.path.join(file_dir, subdir)) if os.path.isfile(os.path.join(os.path.join(file_dir, subdir), f))]
     except Exception as error:
-        resp = {"error" : error.args}
+        resp = {"error" : error.args[1]}
     
     app.logger.debug("directory:" + os.path.join(file_dir, subdir))
         
@@ -428,7 +428,7 @@ def get_remote_ssh():
             sftp.get(afile, os.path.join(local_path, filename.decode()))
         resp = {"status" : "success", "files" : files_moved}
     except Exception as error:
-        resp = {"status":"error","error" : error.args}
+        resp = {"status":"error","error" : error.args[1]}
 
     return jsonify(resp)
 
@@ -446,7 +446,7 @@ def gen_log_config():
 if __name__ == "__main__":
     import os
     if 'WINGDB_ACTIVE' in os.environ:
-        app.debug = True
+        app.debug = False
     # Set DEBUG as default
     app.logger.setLevel(logging.DEBUG)
     app.run(host="0.0.0.0", port=8000)
