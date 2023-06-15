@@ -185,7 +185,8 @@ def get_http_file():
             app.logger.debug("HTTP File Transfered Succeeded - Filename:" + filename)
             if unzip:
                 with ZipFile(filename) as myzip:
-                    myzip.extractall(path=body['file']['local_path'])
+                    myzip.extractall(path=os.path.join(file_dir,
+                                                        body['file']['local_path']))
                 app.logger.debug("File unzipped")
         else:
             resp["error"] = stream.text
