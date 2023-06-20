@@ -331,10 +331,11 @@ def json_response(result, resp):
 def receive_json():
     body = request.get_json()
     filename = body.get('filename')
+    local_path = body.get('local_path', '')
     json_data = body.get('json_data')
     data_str = json.dumps(json_data)
     try:
-        with open(os.path.join(file_dir, filename), 'w') as f_out:
+        with open(os.path.join(file_dir, local_path, filename), 'w') as f_out:
             f_out.write(data_str)
         resp = {"filename" : filename}
         app.logger.debug("saved json:" + filename + " bytes:" + str(len(data_str)))
