@@ -11,7 +11,7 @@
     "username" : "username",
     "password" : "password",
     "tls" : false,
-    "auth" : "oauth2",
+    "auth" : "none",
     "bearer_token" : {
         "token" : ""
     },
@@ -60,6 +60,7 @@
     }
   },
   "rest" : {
+    "full_url" : "https://19897437.cdnp1.hubspotusercontent-na1.net/hubfs/19897437/crm_exports/hubspot-public-crm-exports-hubspot_2023619100207-2023-06-19.zip?Expires=1687260579&Signature=U18kVv1VM6zy2KVc2NaEfcJ2~ZtNgapMVrGBEtmaVT9bhfum6ioY3pXJZjdVRLeCCsmGVbkikRcL5zu2Goac8VhvBBnvPz~9nsJXgBFHvU~IrbLD7f00mEByqefwaaTxivYEhI4-OSi17xw1c2D~IeNc-V-XEy9witKD7yUN9jBAmw7Gyy5dZPBUDO-CNqw-1Fjs7GMxI8ZKRhVc54k-wd1-QqOsSn0xbvirdVaPaH4f~Vr8QfKmDnWmgMar8GyUJ-WYx2epu9Skui40dYnQO3f3ZgCrnhz7qjsItJj3PPoDeEYIaF~fB6YpKZ-ubiFs9gikSZN9GABGMPy6esoe2Q__&Key-Pair-Id=APKAJDNICOKANPHVCSBQ"
     "method" : "GET",
     "path" : "/crm/bulk/v2/read/3045298000237292072/result",
     "header" : [],
@@ -67,7 +68,7 @@
     "body" : {} 
   },
   "file" : {
-    "local_path" : "",
+    "local_path" : "zip",
     "filename" : "file.zip",
     "chunck_size" : 1024
   }

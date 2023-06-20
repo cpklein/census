@@ -128,18 +128,21 @@ def get_http_file():
         
         
     # Build URL
-    protocol = body['account']['protocol']
-    host = body['account']['host'] 
-    port = ':' + str(body['account']['port']) 
-    path = body['rest']['path']     
-    url = protocol + '://' + host + path
+    if body.get("rest", {}).get("full_url", None):
+        url = body['rest']['full_url']
+    else:            
+        protocol = body['account']['protocol']
+        host = body['account']['host'] 
+        port = ':' + str(body['account']['port']) 
+        path = body['rest']['path']     
+        url = protocol + '://' + host + path
 
-    # Build parameters
-    for parameter in body['rest']['query']:
-        params[parameter['key']] = parameter['value']
-    #Build headers
-    for parameter in body['rest']['header']:
-        headers[parameter['key']] = parameter['value']
+        # Build parameters
+        for parameter in body['rest']['query']:
+            params[parameter['key']] = parameter['value']
+        #Build headers
+        for parameter in body['rest']['header']:
+            headers[parameter['key']] = parameter['value']
         
     #Data
     body_json =  body['rest']['body'] 
