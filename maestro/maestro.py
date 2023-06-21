@@ -82,8 +82,43 @@ dictConfig({
     
 
 # Global Variables
-duck_conn = None
-result = None
+
+# List of opened connections
+# each connection has tuple with "database" (string with db filename)
+# "duck_conn" (duckdb connection object)
+# "result" (Relation Object from previous execution for future fetch)
+duck = []
+
+def get_duck_conn(database):
+    global duck
+    for db_name, duck_conn, result in duck:
+        if db_name == database:
+            # We have found, return the connection
+            return duck_conn, result
+    # If we haven't found, open a connection
+    try:
+        duck_conn = duckdb.connect(database=os.path.join(db_dir, database), read_only=False)
+        # Add connection to online cache
+        duck.append((database, duck_conn, None))
+    except Exception as error:
+        app.logger.warning("Error opening database: " + error.args)
+        duck_conn = None
+    # return a recently created connection
+    return duck_conn, None    
+
+def close_duck_conn (database):
+    global duck
+    for db_name, duck_conn, result in duck:
+        if db_name == database:
+            # Remove from list
+            duck.remove((database, duck_conn, result))
+            # And close
+            duck_conn.close()
+            return
+    # We haven't found the connection
+    app.logger.warning("Error closing database, database not found: " + database )
+    return
+    
 
 app = Flask(__name__)
 
@@ -276,26 +311,30 @@ def get_extractor_log(exec_id):
 def sql_execute(database):
     body = request.get_json()
     query = body.get('query')
-    global duck_conn
-    global result
-    try:
-        if duck_conn == None:
-            duck_conn = duckdb.connect(database=os.path.join(db_dir, database), read_only=False)
-        fetchmany = request.args.get('fetchmany', None)
-        if fetchmany:
-            result = duck_conn.sql(query)
-            resp = result.fetchmany(int(fetchmany))
-        else:
-            result = duck_conn.sql(query)
-            if result != None:
-                resp = result.fetchall()
+    duck_conn, result = get_duck_conn(database)
+    if duck_conn != None:
+        # We have a database
+        try:
+            fetchmany = request.args.get('fetchmany', None)
+            if fetchmany:
+                result = duck_conn.sql(query)
+                resp = result.fetchmany(int(fetchmany))
+                app.logger.debug("executed sql fetch: " + query)    
             else:
-                resp = { "status" : "executed"}
-        if request.args.get('format', False) == 'list_of_records':
-            resp = json_response(result, resp)
-    except Exception as error:
-        resp = {"error" : error.args[1]}
-    
+                result = duck_conn.sql(query)
+                if result != None:
+                    resp = result.fetchall()
+                    app.logger.debug("executed sql all: " + query)    
+                else:
+                    resp = { "status" : "executed"}
+            if request.args.get('format', False) == 'list_of_records':
+                resp = json_response(result, resp)
+        except Exception as error:
+            resp = {"error" : error.args}
+            app.logger.warning("error executed sql: " + query + " error: " + error.args)                
+    else:
+        resp = {"error" : "Couldn't open database: " + database}
+        app.logger.warning("Couldn't open database: " + database)    
     return jsonify(resp)
 
 @app.route('/sql/fetch/<database>', methods = ['POST'])
