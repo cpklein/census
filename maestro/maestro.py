@@ -340,8 +340,12 @@ def sql_execute(database):
             if fetchmany:
                 resp = result.fetchmany(int(fetchmany))
                 app.logger.debug("executed sql fetch: " + query + " fetchmany: " + fetchmany)
-                # Update connection with new result for future fetch
-                update_duck_conn(database, result)
+                if len(resp) < int(fetchmany):
+                    # Close connection if we have read it all
+                    close_duck_conn(database)
+                else:
+                    # Update connection with new result for future fetch
+                    update_duck_conn(database, result)
             else:
                 resp = result.fetchall()
                 app.logger.debug("executed sql all: " + query)    
@@ -387,6 +391,7 @@ def fetch(database):
     else:
         resp = {"error" : "Couldn't find result for fetch"}
         app.logger.warning("Couldn't find result for fetch")    
+        close_duck_conn(database)
     return jsonify(resp)
 
 def json_response(result, resp):
