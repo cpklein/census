@@ -425,11 +425,13 @@ def receive_json():
 def list_files():
     subdir = request.args.get('subdir', '')
     try:
-        resp = [f for f in os.listdir(os.path.join(file_dir, subdir)) if os.path.isfile(os.path.join(os.path.join(file_dir, subdir), f))]
+        files = [f for f in os.listdir(os.path.join(file_dir, subdir)) if os.path.isfile(os.path.join(os.path.join(file_dir, subdir), f))]
+        directories =  [f for f in os.listdir(os.path.join(file_dir, subdir)) if os.path.isdir(os.path.join(os.path.join(file_dir, subdir), f))]
+        resp = {"files" : files, "directories" : directories}
     except Exception as error:
         resp = {"error" : error.args[1]}
     
-    app.logger.debug("directory:" + os.path.join(file_dir, subdir))
+    app.logger.debug("list files directory:" + os.path.join(file_dir, subdir))
         
     return jsonify(resp)
 
