@@ -11,6 +11,7 @@ import logging
 from logging.config import dictConfig
 from zipfile import ZipFile
 from census_local import *
+from censusfs import FileSet
 
 
 
@@ -146,8 +147,21 @@ def download_file(name):
     except Exception as error:
         app.logger.debug("upload ERROR:" + error.args[1]) 
     
-        
 
+@app.route("/filesystem/tree", methods = ['GET'])        
+def get_tree():
+    body = request.get_json()
+    fset = FileSet(body['filter'], file_dir)
+    resp = {"tree" : fset.tree}
+    return jsonify(resp)
+
+@app.route("/filesystem/fset", methods = ['GET'])        
+def get_fset():
+    body = request.get_json()
+    fset = FileSet(body['filter'], file_dir)
+    resp = {"tree" : fset.tree}
+    return jsonify(resp)
+    
 
 @app.route('/transfer/http', methods = ['POST'])
 def get_http_file():
