@@ -8,9 +8,9 @@ import requests
 import re
 from requests.auth import HTTPBasicAuth
 import logging
-from logging.config import dictConfig
 from zipfile import ZipFile
 from census_local import *
+from census_logging import * 
 from censusfs import FileSet
 
 
@@ -20,67 +20,12 @@ def check_path_and_create(path):
     if not os.path.exists(path):
         os.makedirs(path)
 
-# File Configuration on package
-meltano_dir = os.path.join(census_dir, 'meltano')
-meltano_log_config_file = os.path.join(meltano_dir, 'logging_template.yaml')
-
-# File Configuration data
-db_dir = os.path.join(data_dir, 'database')
-log_dir = os.path.join (data_dir, 'logs') 
-file_dir = os.path.join(data_dir, 'files')
-upload_dir = os.path.join(file_dir, 'uploads')
-log_file = os.path.join(log_dir, 'census.log')
 
 for path in [db_dir,
              log_dir,
              file_dir,
              upload_dir]:
     check_path_and_create(path)
-
-# Logging Configuration
-dictConfig({
-    "version": 1,
-    "disable_existing_loggers": False,
-    "formatters": {
-        "default": {
-            "format": "[%(asctime)s] — " + census_id + " — %(name)s — %(levelname)s — %(funcName)s:%(lineno)d — %(message)s",
-        }
-    },
-    "handlers": {
-        "file": {
-            "class": "logging.handlers.RotatingFileHandler",
-            "formatter": "default",
-            "filename": log_file,
-            "maxBytes": 100000,
-            "backupCount": 10,
-            "delay": "False",
-       },
-        "syslog": {
-            "class": "logging.handlers.SysLogHandler",
-            "formatter": "default",
-            "address": (syslog_server, 514),
-            "facility": "user"
-        }
-    },
-    "loggers": {
-        "gunicorn.error": {
-            "handlers": ["file", "syslog"] ,
-            "level": "INFO",
-            "propagate": False,
-        },
-        "gunicorn.access": {
-            "handlers": ["file", "syslog"] ,
-            "level": "INFO",
-            "propagate": False,
-        }
-    },
-    "root": {
-        "level": "WARN",
-        "handlers": ["file", "syslog"]
-    }
-})
-
-    
 
 # Global Variables
 

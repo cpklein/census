@@ -1,7 +1,11 @@
 import os
-import re
+#import re
 import duckdb
+import logging
+from census_logging import * 
 
+# Get the maestro logger
+fsys_logger = logging.getLogger('maestro')
 
 class FileSet:
     def __init__(self, file_filter, file_dir):
@@ -43,10 +47,11 @@ class FileSet:
             self.tree = self.get_tree(os.path.join(self.file_dir, path))
             
     def get_tree(self, path):
-        tree = []
+        # Add base directory
+        tree = [path]
+        # Find subdirectories
         directories =  [f for f in os.listdir(path) if os.path.isdir(os.path.join(path, f))]
         for directory in directories:
-            tree.append(os.path.join(path, directory))
             # Call itself for the subdirectory
             tree = tree + self.get_tree(os.path.join(path, directory))
         return tree
@@ -57,8 +62,8 @@ class FileSet:
                 path VARCHAR[],
                 origin VARCHAR,
                 tags VARCHAR[],
-                created VARCHAR,
-                removed VARCHAR,
+                created TIMESTAMP,
+                removed TIMESTAMP,
                 hidden BOOLEAN,
                 processed BOOLEAN,
                 user VARCHAR[],
@@ -76,7 +81,7 @@ class FileSet:
                             { "dir" : req }
                 )
             except Exception as error:
-                print(error)
+                fsys_logger.debug(error)
             
                 
                 
