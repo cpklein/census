@@ -56,6 +56,11 @@ class FileSet:
             tree = tree + self.get_tree(os.path.join(path, directory))
         return tree
     def build_fset(self):
+        # Remove the previous table if existing
+        try:
+            self.conn.execute('DROP TABLE fset')
+        except Exception as error:
+            fsys_logger.debug(error)
         # Create table
         self.conn.execute("""CREATE TABLE fset(
                 filename VARCHAR,
@@ -82,12 +87,7 @@ class FileSet:
                 )
             except Exception as error:
                 fsys_logger.debug(error)
-            
                 
-                
-        
-            
-        
 # select * from files where list_contains(tags, 'tag03');
         
         

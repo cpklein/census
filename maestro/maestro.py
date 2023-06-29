@@ -30,10 +30,19 @@ for path in [db_dir,
 # Global Variables
 
 # List of opened connections
-# each connection has tuple with "database" (string with db filename)
+# each connection has tuple with 
+# "database" (string with db filename)
 # "duck_conn" (duckdb connection object)
 # "result" (Relation Object from previous execution for future fetch)
 duck = []
+
+# List of opened FileSets
+file_filter = {
+    "recursive" : True,
+    "user" : "census",
+    "group" : ["census"]
+}
+fset = FileSet(file_filter, file_dir)
 
 def get_duck_conn(database):
     global duck
@@ -95,9 +104,16 @@ def download_file(name):
 
 @app.route("/filesystem/tree", methods = ['GET'])        
 def get_tree():
-    body = request.get_json()
-    fset = FileSet(body['filter'], file_dir)
     resp = {"tree" : fset.tree}
+    return jsonify(resp)
+
+@app.route("/filesystem/rebuild", methods = ['POST'])        
+def rebuild_fset():
+    global fset
+    del fset
+    fset = FileSet(file_filter, file_dir)
+    app.logger.debug("rebuild file system")
+    resp = {"status" : "executed"}
     return jsonify(resp)
 
 @app.route("/filesystem/fset", methods = ['GET'])        
