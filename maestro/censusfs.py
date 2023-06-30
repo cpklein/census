@@ -18,19 +18,20 @@ class FileSet:
         self.recursive = file_filter.get('recursive', False)
         self.origin = file_filter.get('origin', [])
         self.tags = file_filter.get('tags', [])
-        self.created_after = file_filter.get('created_after', '')
-        self.created_before = file_filter.get('created_before', '')
+        self.created_after = file_filter.get('created_after', '-infinity')
+        self.created_before = file_filter.get('created_before', 'infinity')
         self.status = file_filter.get('status', [])
+        self.action = file_filter.get('action', 'change')
         self.user = file_filter.get('user', '')
         if self.user == '':
             raise Exception('FileSet creation without user')
         self.groups = file_filter.get('groups', [])
         if self.user == []:
             raise Exception('FileSet creation without groups')
-        # When we receive the file list ready from the user
-        if self.filenames != []:
-            self.filelist = self.filenames
-            return
+        ## When we receive the file list ready from the user
+        #if self.filenames != []:
+            #self.filelist = self.filenames
+            #return
         self.build_tree()
         self.build_fset()
         return
@@ -71,10 +72,12 @@ class FileSet:
                 removed TIMESTAMP,
                 hidden BOOLEAN,
                 processed BOOLEAN,
-                user VARCHAR[],
-                group_ VARCHAR[],
-                read VARCHAR[],
-                change VARCHAR[])""")
+                owner VARCHAR,
+                changed_by VARCHAR,
+                read_user VARCHAR[],
+                read_group VARCHAR[],
+                change_user VARCHAR[],
+                change_group VARCHAR[])""")
         # Read .*.json from all directories
         for path in self.tree:
             # check if there are metadata files, otherwise break 
@@ -88,6 +91,47 @@ class FileSet:
             except Exception as error:
                 fsys_logger.debug(error)
                 
+    def get_files(self, file_filter):
+        #Update filter values
+        self.filenames = file_filter.get('filenames', self.filenames)
+        self.base_path = file_filter.get('base_path', self.base_path)
+        self.recursive = file_filter.get('recursive', self.recursive)
+        self.origin = file_filter.get('origin', self.origin)
+        self.tags = file_filter.get('tags', self.tags)
+        self.created_after = file_filter.get('created_after', self.created_after)
+        self.created_before = file_filter.get('created_before', self.created_before)
+        self.status = file_filter.get('status', self.status)
+        self.action = file_filter.get('action', 'change')
+        self.user = file_filter.get('user', '')
+        if self.user == '':
+            raise Exception('FileSet request without user')
+        self.groups = file_filter.get('groups', [])
+        if self.groups == []:
+            raise Exception('FileSet request without groups')
+        
+        # Filter user
+        
+        # Create a Relation with everything available
+        flist = self.conn.sql('SELECT * FROM fset')
+        # Read or Change
+        if self.action == 'read':
+            # Get files for the user
+            filter_ = "list_contains(read_user, '{}')"
+            flist_u = flist.filter (filter_.format(self.user))
+            # Get files for each group
+            # Create filter
+            filter_ = "list_contains(read_group, '{}')"
+            for u_group in self.groups:
+                # Filter based on the group
+                flist_g = flist.filter (filter_.format(u_group))
+                # Find what's new
+                flist_new = flist_g.except_(flist_u)
+                # Add result to the cummulative list
+                flist_u = flist_u.union(flist_new)
+                return
+            
+                
+                               
 # select * from files where list_contains(tags, 'tag03');
         
         

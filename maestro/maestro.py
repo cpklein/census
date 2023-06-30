@@ -104,7 +104,9 @@ def download_file(name):
 
 @app.route("/filesystem/tree", methods = ['GET'])        
 def get_tree():
+    body = request.get_json()
     resp = {"tree" : fset.tree}
+    fset.get_files(body['filter'])
     return jsonify(resp)
 
 @app.route("/filesystem/rebuild", methods = ['POST'])        
