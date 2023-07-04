@@ -107,7 +107,16 @@ def get_tree():
     body = request.get_json()
     resp = {"tree" : fset.tree}
     fset.get_files(body['filter'])
+    resp['files'] = fset.filelist
     return jsonify(resp)
+
+@app.route("/filesystem/files", methods = ['GET'])        
+def get_files():
+    body = request.get_json()
+    fset.get_files(body['filter'])
+    resp = {"files" : fset.filelist}
+    return jsonify(resp)
+
 
 @app.route("/filesystem/rebuild", methods = ['POST'])        
 def rebuild_fset():

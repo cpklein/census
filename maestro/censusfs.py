@@ -20,6 +20,7 @@ class FileSet:
         self.tags = file_filter.get('tags', [])
         self.created_after = file_filter.get('created_after', '-infinity')
         self.created_before = file_filter.get('created_before', 'infinity')
+        self.visibility =  file_filter.get('visibility', [])
         self.status = file_filter.get('status', [])
         self.action = file_filter.get('action', 'change')
         self.user = file_filter.get('user', '')
@@ -66,7 +67,7 @@ class FileSet:
         self.conn.execute("""CREATE TABLE fset(
                 filename VARCHAR,
                 path VARCHAR[],
-                origin VARCHAR,
+                origin VARCHAR[],
                 tags VARCHAR[],
                 created TIMESTAMP,
                 removed TIMESTAMP,
@@ -100,6 +101,7 @@ class FileSet:
         self.tags = file_filter.get('tags', self.tags)
         self.created_after = file_filter.get('created_after', self.created_after)
         self.created_before = file_filter.get('created_before', self.created_before)
+        self.visibility = file_filter.get('visibility', self.status)
         self.status = file_filter.get('status', self.status)
         self.action = file_filter.get('action', 'change')
         self.user = file_filter.get('user', '')
@@ -109,31 +111,104 @@ class FileSet:
         if self.groups == []:
             raise Exception('FileSet request without groups')
         
-        # Filter user
         
         # Create a Relation with everything available
-        flist = self.conn.sql('SELECT * FROM fset')
+        flist_ref = self.conn.sql('SELECT * FROM fset')
+        # Create an empty Relation
+        flist_empty = self.conn.sql("SELECT * FROM flist_ref LIMIT 0")
+        # Create the result flist
+        flist = self.conn.sql("SELECT * FROM flist_ref LIMIT 0")
+
+
+        # Filter on visibilty (no visibility means all)
+        if self.visibility:            
+            # Filter on status hidden
+            if 'hidden' in self.visibility:
+                flist_tmp = flist_ref.filter('hidden = true')
+                flist = flist_empty.union(flist_tmp)
+            # Filter on status unhidden
+            if 'unhidden' in self.visibility:
+                flist_tmp = flist_ref.filter('hidden = false')
+                flist = flist.union(flist_tmp)
+
+        # Filter on dates
+        if self.created_after:
+            flist = flist_ref.filter("created > '{}'".format(self.created_after))
+        if self.created_before:
+            flist = flist.filter("created < '{}'".format(self.created_before))
+
+        # Filter on processed status (no status means all)
+        if self.status:            
+            # Filter on status processed
+            if 'processed' in self.status:
+                flist_tmp = flist_ref.filter('processed = true')
+                flist = flist_empty.union(flist_tmp)
+            # Filter on status unprocessed
+            if 'unprocessed' in self.visibility:
+                flist_tmp = flist_ref.filter('processed = false')
+                flist = flist.union(flist_tmp)
+            
+        # Filter on path
+        path_base = ''
+        for sub in self.base_path:
+            path_base = os.path.join(path_base, sub)
+        # Filter all files that concat path starts with path_base
+        flist = flist.filter("starts_with(array_to_string(path, '/'), '{}')".format(path_base))    
+
         # Read or Change
         if self.action == 'read':
-            # Get files for the user
-            filter_ = "list_contains(read_user, '{}')"
-            flist_u = flist.filter (filter_.format(self.user))
-            # Get files for each group
-            # Create filter
-            filter_ = "list_contains(read_group, '{}')"
-            for u_group in self.groups:
-                # Filter based on the group
-                flist_g = flist.filter (filter_.format(u_group))
-                # Find what's new
-                flist_new = flist_g.except_(flist_u)
-                # Add result to the cummulative list
-                flist_u = flist_u.union(flist_new)
-                return
+            # Define Filter for the user
+            filter_user = "list_contains(read_user, '{}')"
+            # define filter for the group
+            filter_group = "list_contains(read_group, '{}')"
+        else:
+            # Define Filter for the user
+            filter_user = "list_contains(change_user, '{}')"
+            # define filter for the group
+            filter_group = "list_contains(change_group, '{}')"           
+        # Apply user filter
+        flist_tmp = flist.filter (filter_user.format(self.user))
+        # The user may belong to multiple groups. Check each one individualy
+        for u_group in self.groups:
+            # Filter based on the group
+            flist_group = flist.filter (filter_group.format(u_group))
+            # Find what's new
+            flist_new = flist_group.except_(flist_tmp)
+            # Add result to the cummulative list
+            flist_tmp = flist_tmp.union(flist_new)
+        # Update flist
+        flist = flist_empty.union(flist_tmp)
             
-                
-                               
-# select * from files where list_contains(tags, 'tag03');
-        
-        
-        
-    
+        # Filter on tags (no tags means all)
+        if self.tags:            
+            # Create an empty Relation
+            flist_tmp = self.conn.sql("select * from flist_ref limit 0")
+            for tag in self.tags:
+                # Filter each tag
+                flist_tag = flist.filter ("list_contains(tags, '{}')".format(tag))
+                # Find what's new
+                flist_new = flist_tag.except_(flist_tmp)
+                # Add result to the cummulative list
+                flist_tmp = flist_tmp.union(flist_new)
+            # Update flist_ref
+            flist = flist_empty.union(flist_tmp)
+
+        # Filter on origin (no origin means all)
+        if self.origin:            
+            # Create an empty Relation
+            flist_tmp = self.conn.sql("select * from flist_ref limit 0")
+            for tag in self.tags:
+                # Filter each tag
+                flist_proc = flist.filter ("list_contains(tags, '{}')".format(tag))
+                # Find what's new
+                flist_new = flist_proc.except_(flist_tmp)
+                # Add result to the cummulative list
+                flist_tmp = flist_tmp.union(flist_new)
+            # Update flist_ref
+            flist = flist_empty.union(flist_tmp)
+            
+        #Build array with files
+        resp = flist.fetchall()
+        columns = flist.columns
+        self.filelist =  [dict(zip(columns,register)) for register in resp]
+        return
