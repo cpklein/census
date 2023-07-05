@@ -36,13 +36,8 @@ for path in [db_dir,
 # "result" (Relation Object from previous execution for future fetch)
 duck = []
 
-# List of opened FileSets
-file_filter = {
-    "recursive" : True,
-    "user" : "census",
-    "group" : ["census"]
-}
-fset = FileSet(file_filter, file_dir)
+# Opened FileSet
+fset = FileSet(file_dir, {})
 
 def get_duck_conn(database):
     global duck
@@ -104,17 +99,20 @@ def download_file(name):
 
 @app.route("/filesystem/tree", methods = ['GET'])        
 def get_tree():
+    global fset
     body = request.get_json()
+    file_filter = body.get('filter', None)
+    fset.build_tree()
     resp = {"tree" : fset.tree}
-    fset.get_files(body['filter'])
-    resp['files'] = fset.filelist
     return jsonify(resp)
 
 @app.route("/filesystem/files", methods = ['GET'])        
 def get_files():
+    global fset
     body = request.get_json()
-    fset.get_files(body['filter'])
-    resp = {"files" : fset.filelist}
+    file_filter = body.get('filter', None)
+    fset.get_files(file_filter)
+    resp = { "files" : fset.filelist }
     return jsonify(resp)
 
 
@@ -122,17 +120,13 @@ def get_files():
 def rebuild_fset():
     global fset
     del fset
-    fset = FileSet(file_filter, file_dir)
+    body = request.get_json()
+    file_filter = body.get('filter', None)
+    fset = FileSet(file_dir, file_filter)
     app.logger.debug("rebuild file system")
     resp = {"status" : "executed"}
     return jsonify(resp)
 
-@app.route("/filesystem/fset", methods = ['GET'])        
-def get_fset():
-    body = request.get_json()
-    fset = FileSet(body['filter'], file_dir)
-    resp = {"tree" : fset.tree}
-    return jsonify(resp)
     
 
 @app.route('/transfer/http', methods = ['POST'])

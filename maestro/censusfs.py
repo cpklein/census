@@ -8,34 +8,55 @@ from census_logging import *
 fsys_logger = logging.getLogger('maestro')
 
 class FileSet:
-    def __init__(self, file_filter, file_dir):
+    def __init__(self, file_dir, file_filter):
         self.conn = duckdb.connect(':default:')
         self.file_dir = file_dir
         self.tree = []
         self.filelist = []
-        self.filenames = file_filter.get('filenames', [])
-        self.base_path = file_filter.get('base_path', [])
-        self.recursive = file_filter.get('recursive', False)
-        self.origin = file_filter.get('origin', [])
-        self.tags = file_filter.get('tags', [])
-        self.created_after = file_filter.get('created_after', '-infinity')
-        self.created_before = file_filter.get('created_before', 'infinity')
-        self.visibility =  file_filter.get('visibility', [])
-        self.status = file_filter.get('status', [])
+        self.filenames = []
+        self.base_path = []
+        self.recursive = True
+        self.origin = []
+        self.tags = []
+        self.created_after = '-infinity'
+        self.created_before = 'infinity'
+        self.visibility = []
+        self.status = []
+        self.action = 'read'
+        self.user = '_census_'
+        if self.user == '':
+            raise Exception('FileSet creation without user')
+        self.groups = '_census_'
+        if self.user == []:
+            raise Exception('FileSet creation without groups')
+        if file_filter:
+            self.update_filter(file_filter)
+        # Build the tree
+        self.build_tree()
+        # Build filelist
+        self.build_fset()
+        return
+
+    def update_filter(self, file_filter):
+        #Update filter values
+        self.filenames = file_filter.get('filenames', self.filenames)
+        self.base_path = file_filter.get('base_path', self.base_path)
+        self.recursive = file_filter.get('recursive', self.recursive)
+        self.origin = file_filter.get('origin', self.origin)
+        self.tags = file_filter.get('tags', self.tags)
+        self.created_after = file_filter.get('created_after', self.created_after)
+        self.created_before = file_filter.get('created_before', self.created_before)
+        self.visibility = file_filter.get('visibility', self.status)
+        self.status = file_filter.get('status', self.status)
         self.action = file_filter.get('action', 'change')
         self.user = file_filter.get('user', '')
         if self.user == '':
-            raise Exception('FileSet creation without user')
+            raise Exception('FileSet request without user')
         self.groups = file_filter.get('groups', [])
-        if self.user == []:
-            raise Exception('FileSet creation without groups')
-        ## When we receive the file list ready from the user
-        #if self.filenames != []:
-            #self.filelist = self.filenames
-            #return
-        self.build_tree()
-        self.build_fset()
+        if self.groups == []:
+            raise Exception('FileSet request without groups')
         return
+
         
     def build_tree(self):
         # Retrieve all files from the base_path
