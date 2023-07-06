@@ -5,9 +5,12 @@ import os
 census_id = socket.gethostname() 
 
 # development environment
-if census_id in ['german_shepherd', '1125-CKLEIN.local']:
+if census_id in ['1125-CKLEIN.local']:
     census_dir = '/Users/caioklein/Development/census'
     data_dir = '/Users/caioklein/Development/data'
+elif census_id in ['german_shepherd']:
+    census_dir = '/Users/caio/Development/integra/census'
+    data_dir = '/Users/caio/Development/integra/data'
 # production environment
 else:
     census_dir = '/home/ubuntu/census'
