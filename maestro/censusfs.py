@@ -29,11 +29,12 @@ class FileSet:
         self.groups = '_census_'
         if self.user == []:
             raise Exception('FileSet creation without groups')
+        # In case we supply the filter, update it
         if file_filter:
             self.update_filter(file_filter)
         # Build the tree
         self.build_tree()
-        # Build filelist
+        # Build fset with all files under the tree
         self.build_fset()
         return
 
@@ -56,7 +57,6 @@ class FileSet:
         if self.groups == []:
             raise Exception('FileSet request without groups')
         return
-
         
     def build_tree(self):
         # Retrieve all files from the base_path
@@ -67,17 +67,21 @@ class FileSet:
             for sub in self.base_path:
                 path = os.path.join(path, sub)
             # call the recursive function that parses all subdirectories
-            self.tree = self.get_tree(os.path.join(self.file_dir, path))
-            
-    def get_tree(self, path):
+            self.tree = self.__get_tree(os.path.join(self.file_dir, path))
+    
+    # Function to recurrently parse all subdirectories
+    # Call only from withing the class
+    def __get_tree(self, path):
         # Add base directory
         tree = [path]
         # Find subdirectories
         directories =  [f for f in os.listdir(path) if os.path.isdir(os.path.join(path, f))]
         for directory in directories:
             # Call itself for the subdirectory
-            tree = tree + self.get_tree(os.path.join(path, directory))
+            tree = tree + self.__get_tree(os.path.join(path, directory))
         return tree
+
+    # Insert all files into the fset database
     def build_fset(self):
         # Remove the previous table if existing
         try:
@@ -114,24 +118,9 @@ class FileSet:
                 fsys_logger.debug(error)
                 
     def get_files(self, file_filter):
-        #Update filter values
-        self.filenames = file_filter.get('filenames', self.filenames)
-        self.base_path = file_filter.get('base_path', self.base_path)
-        self.recursive = file_filter.get('recursive', self.recursive)
-        self.origin = file_filter.get('origin', self.origin)
-        self.tags = file_filter.get('tags', self.tags)
-        self.created_after = file_filter.get('created_after', self.created_after)
-        self.created_before = file_filter.get('created_before', self.created_before)
-        self.visibility = file_filter.get('visibility', self.status)
-        self.status = file_filter.get('status', self.status)
-        self.action = file_filter.get('action', 'change')
-        self.user = file_filter.get('user', '')
-        if self.user == '':
-            raise Exception('FileSet request without user')
-        self.groups = file_filter.get('groups', [])
-        if self.groups == []:
-            raise Exception('FileSet request without groups')
-        
+        #Update filter values if filter is provided
+        if file_filter:
+            self.update_filter(file_filter)
         
         # Create a Relation with everything available
         flist_ref = self.conn.sql('SELECT * FROM fset')
