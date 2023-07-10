@@ -109,7 +109,7 @@ def get_files():
     body = request.get_json()
     file_filter = body.get('filter', None)
     fset.get_files(file_filter)
-    resp = { "files" : fset.filelist }
+    resp = { "files" : fset.filelist_full }
     return jsonify(resp)
 
 
@@ -383,18 +383,19 @@ def json_response(result, resp):
 @app.route('/transfer/json', methods = ['POST'])
 def receive_json():
     body = request.get_json()
-    filename = body.get('filename')
-    local_path = body.get('local_path', '')
     json_data = body.get('json_data')
+    meta = body.get('meta')
+    local_path = '/'.join(meta['local_path'])
     data_str = json.dumps(json_data)
     try:
-        with open(os.path.join(file_dir, local_path, filename), 'w') as f_out:
+        with open(os.path.join(file_dir, local_path, meta['filename']), 'w') as f_out:
             f_out.write(data_str)
-        resp = {"filename" : filename}
-        app.logger.debug("saved json:" + filename + " bytes:" + str(len(data_str)))
+        
+        resp = {"filename" : meta['filename']}
+        app.logger.debug("saved json:" + meta['filename'] + " bytes:" + str(len(data_str)))
     except Exception as error:
         resp = {"error" : error.args[1]}
-        app.logger.warning("error saving json:" + filename + " error:" + error.args[1])
+        app.logger.warning("error saving json:" + meta['filename'] + " error:" + error.args[1])
     return jsonify(resp)
 
 #List files directory - Only files

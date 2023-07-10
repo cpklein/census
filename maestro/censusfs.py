@@ -1,4 +1,6 @@
 import os
+import pytz
+import datetime
 #import re
 import duckdb
 import logging
@@ -13,6 +15,7 @@ class FileSet:
         self.file_dir = file_dir
         self.tree = []
         self.filelist = []
+        self.filelist_full = []
         self.filenames = []
         self.base_path = []
         self.recursive = True
@@ -240,8 +243,36 @@ class FileSet:
             # Update flist_ref
             flist = flist_empty.union(flist_tmp)
             
-        #Build array with files
+        #Build filelist
+        flist_sql = self.conn.sql("select filename, array_to_string(path, '/') from flist")
+        flist_list = flist_sql.fetchall()
+        self.filelist = [ os.path.join(file_dir, path, file) for file, path in flist_list]
+
+        #Build flist_full - array with files
         resp = flist.fetchall()
         columns = flist.columns
-        self.filelist =  [dict(zip(columns,register)) for register in resp]
+        self.filelist_full =  [dict(zip(columns,register)) for register in resp]
         return
+    
+class File:
+    def __init__(self, file_dir, meta, origin):
+        tz = pytz.timezone('Brazil/East')        
+        self.meta = {
+            'filename' : meta['filename'],
+            'path' : meta['path'],
+            'origin' : [origin],
+            'tags' : meta['tags'],
+            'created' : datetime.datetime.now(tz=tz).strftime('%Y-%m-%d %H:%M:%S.%f%Z'),
+            'removed' : '2100-01-01 00:00:00.000000-00',
+            'hidden' : False,
+            'processed' : False,
+            'owner' : meta['user'],
+            "changed_by" : meta['user'],
+            "read_user" : meta['read_user'],
+            "read_group" : meta['read_group'],
+            "change_user" : meta['change_user'],
+            "change_group" : meta['change_group']            
+        }
+    
+        #with open(os.path.join(file_dir, meta['local_path'], meta['filename']), 'w') as f_out:
+            #f_out.write(data_str)    
