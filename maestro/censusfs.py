@@ -129,41 +129,64 @@ class FileSet:
         # Create the result flist
         flist = self.conn.sql("SELECT * FROM flist_ref LIMIT 0")
 
+        # Filter on filenames
+        if self.filenames:            
+            # Create an empty Relation
+            flist_tmp = self.conn.sql("select * from flist_ref limit 0")
+            for filename in self.filenames:
+                # Filter each filename
+                flist_proc = flist_ref.filter ("filename = '{}'".format(filename))
+                # Find what's new
+                flist_new = flist_proc.except_(flist_tmp)
+                # Add result to the cummulative list
+                flist_tmp = flist_tmp.union(flist_new)
+            # Update flist_ref
+            flist = flist_empty.union(flist_tmp)
+        else:
+            flist = flist.union(flist_ref)
 
         # Filter on visibilty (no visibility means all)
-        if self.visibility:            
+        if self.visibility:
+            # Create an empty Relation
+            flist_tmp = self.conn.sql("select * from flist_ref limit 0")            
             # Filter on status hidden
             if 'hidden' in self.visibility:
-                flist_tmp = flist_ref.filter('hidden = true')
-                flist = flist_empty.union(flist_tmp)
+                flist_tmp = flist.filter('hidden = true')
             # Filter on status unhidden
             if 'unhidden' in self.visibility:
-                flist_tmp = flist_ref.filter('hidden = false')
-                flist = flist.union(flist_tmp)
+                flist_proc = flist.filter('hidden = false')
+                flist_tmp = flist_proc.union(flist_tmp)
+            # Update flist
+            flist = flist_empty.union(flist_tmp)
 
         # Filter on dates
         if self.created_after:
-            flist = flist_ref.filter("created > '{}'".format(self.created_after))
+            flist = flist.filter("created > '{}'".format(self.created_after))
         if self.created_before:
             flist = flist.filter("created < '{}'".format(self.created_before))
 
         # Filter on processed status (no status means all)
-        if self.status:            
+        if self.status:
+            # Create an empty Relation
+            flist_tmp = self.conn.sql("select * from flist_ref limit 0")            
             # Filter on status processed
             if 'processed' in self.status:
-                flist_tmp = flist_ref.filter('processed = true')
-                flist = flist_empty.union(flist_tmp)
+                flist_tmp = flist.filter('processed = true')
             # Filter on status unprocessed
-            if 'unprocessed' in self.visibility:
-                flist_tmp = flist_ref.filter('processed = false')
-                flist = flist.union(flist_tmp)
+            if 'unprocessed' in self.status:
+                flist_proc = flist.filter('processed = false')
+                flist_tmp = flist_proc.union(flist_tmp)
+            # Update flist
+            flist = flist_empty.union(flist_tmp)
             
         # Filter on path
         path_base = ''
         for sub in self.base_path:
             path_base = os.path.join(path_base, sub)
-        # Filter all files that concat path starts with path_base
-        flist = flist.filter("starts_with(array_to_string(path, '/'), '{}')".format(path_base))    
+        if path_base:
+            # Just execute if there is a path to filter. Otherwise do nothing
+            # Filter all files that concat path starts with path_base
+            flist = flist.filter("starts_with(array_to_string(path, '/'), '{}')".format(path_base))
 
         # Read or Change
         if self.action == 'read':
@@ -207,9 +230,9 @@ class FileSet:
         if self.origin:            
             # Create an empty Relation
             flist_tmp = self.conn.sql("select * from flist_ref limit 0")
-            for tag in self.tags:
-                # Filter each tag
-                flist_proc = flist.filter ("list_contains(tags, '{}')".format(tag))
+            for origin in self.origin:
+                # Filter each origin
+                flist_proc = flist.filter ("list_contains(origin, '{}')".format(origin))
                 # Find what's new
                 flist_new = flist_proc.except_(flist_tmp)
                 # Add result to the cummulative list
