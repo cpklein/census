@@ -2,6 +2,7 @@ import subprocess, os, psutil
 import uuid, yaml, json
 from flask import Flask, jsonify, request, send_from_directory
 import duckdb
+from duckdb.typing import *
 from io import StringIO
 import paramiko
 import requests
@@ -39,6 +40,11 @@ duck = []
 # Opened FileSet
 fset = FileSet(file_dir, {})
 
+# DuckDB Functions
+def fset_list():
+    global fset
+    return fset.filelist
+
 def get_duck_conn(database):
     global duck
     for db_name, duck_conn, result in duck:
@@ -49,6 +55,8 @@ def get_duck_conn(database):
     # If we haven't found, open a connection
     try:
         duck_conn = duckdb.connect(database=os.path.join(db_dir, database), read_only=False)
+        # Create the function
+        duck_conn.create_function('fset_list', fset_list, [], 'VARCHAR[]')        
         # Add connection to online cache
         duck.append((database, duck_conn, None))
         app.logger.debug("Opened database connection: " + database)
@@ -300,6 +308,10 @@ def get_extractor_log(exec_id):
 def sql_execute(database):
     body = request.get_json()
     query = body.get('query')
+    file_filter = body.get('filter', None)
+    if file_filter:
+        # Update fset
+        fset.get_files(file_filter)
     duck_conn, result = get_duck_conn(database)
     if duck_conn != None:
         # We have a database
@@ -382,6 +394,7 @@ def json_response(result, resp):
 # json_data = Array of records to be imported into duckdb
 @app.route('/transfer/json', methods = ['POST'])
 def receive_json():
+    global fset
     body = request.get_json()
     json_data = body.get('json_data')
     meta = body.get('meta')
@@ -390,8 +403,9 @@ def receive_json():
     try:
         with open(os.path.join(file_dir, local_path, meta['filename']), 'w') as f_out:
             f_out.write(data_str)
-        
-        resp = {"filename" : meta['filename']}
+        # Create the meta file
+        fset.new_file(meta, 'json')
+        resp = {"filename" : os.path.join(local_path, meta['filename'])}
         app.logger.debug("saved json:" + meta['filename'] + " bytes:" + str(len(data_str)))
     except Exception as error:
         resp = {"error" : error.args[1]}

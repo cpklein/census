@@ -4,6 +4,7 @@ import datetime
 #import re
 import duckdb
 import logging
+import json
 from census_logging import * 
 
 # Get the maestro logger
@@ -212,8 +213,11 @@ class FileSet:
             flist_new = flist_group.except_(flist_tmp)
             # Add result to the cummulative list
             flist_tmp = flist_tmp.union(flist_new)
+        # Add up all files under the user ownership
+        flist_owner = flist.filter("owner = '{}'".format(self.user))
+        flist_new = flist_owner.except_(flist_tmp)
         # Update flist
-        flist = flist_empty.union(flist_tmp)
+        flist = flist_tmp.union(flist_new)
             
         # Filter on tags (no tags means all)
         if self.tags:            
@@ -254,12 +258,11 @@ class FileSet:
         self.filelist_full =  [dict(zip(columns,register)) for register in resp]
         return
     
-class File:
-    def __init__(self, file_dir, meta, origin):
-        tz = pytz.timezone('Brazil/East')        
-        self.meta = {
+    def new_file(self, meta, origin):
+        tz = pytz.timezone('Brazil/East')
+        new_meta = {
             'filename' : meta['filename'],
-            'path' : meta['path'],
+            'path' : meta['local_path'],
             'origin' : [origin],
             'tags' : meta['tags'],
             'created' : datetime.datetime.now(tz=tz).strftime('%Y-%m-%d %H:%M:%S.%f%Z'),
@@ -273,6 +276,20 @@ class File:
             "change_user" : meta['change_user'],
             "change_group" : meta['change_group']            
         }
-    
-        #with open(os.path.join(file_dir, meta['local_path'], meta['filename']), 'w') as f_out:
-            #f_out.write(data_str)    
+        meta_data = json.dumps([new_meta], indent=4)
+        local_path = '/'.join(meta['local_path'])
+        filename = '.' + meta['filename'] + '.json'
+        full_filename = os.path.join(self.file_dir, local_path, filename)
+
+        # Write the json file
+        with open(full_filename, 'w') as f_out:
+            f_out.write(meta_data)
+
+        # Update fset
+        # Remove if there is the same file already there        
+        try:
+            self.conn.execute("DELETE FROM fset WHERE array_to_string(path, '/') = '{}' AND filename = '{}'".format(local_path, meta['filename']))
+            self.conn.execute("INSERT INTO fset SELECT * FROM read_json('{}', auto_detect=true, union_by_name=true)".format(full_filename))
+        except Exception as error:
+            fsys_logger.debug(error)
+
