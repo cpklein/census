@@ -2,6 +2,7 @@
 import socket
 import os
 
+KNOWN_EXTENSIONS = ['.json', '.csv', '.parquet']
 census_id = socket.gethostname() 
 
 # development environment

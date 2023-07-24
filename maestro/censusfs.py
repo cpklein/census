@@ -18,6 +18,7 @@ class FileSet:
         self.filelist = []
         self.filelist_full = []
         self.filenames = []
+        self.type = []
         self.base_path = []
         self.recursive = True
         self.origin = []
@@ -45,6 +46,7 @@ class FileSet:
     def update_filter(self, file_filter):
         #Update filter values
         self.filenames = file_filter.get('filenames', self.filenames)
+        self.type = file_filter.get('type', self.type)
         self.base_path = file_filter.get('base_path', self.base_path)
         self.recursive = file_filter.get('recursive', self.recursive)
         self.origin = file_filter.get('origin', self.origin)
@@ -95,6 +97,7 @@ class FileSet:
         # Create table
         self.conn.execute("""CREATE TABLE fset(
                 filename VARCHAR,
+                type VARCHAR,
                 path VARCHAR[],
                 origin VARCHAR[],
                 tags VARCHAR[],
@@ -148,6 +151,20 @@ class FileSet:
             flist = flist_empty.union(flist_tmp)
         else:
             flist = flist.union(flist_ref)
+
+        # Filter on type
+        if self.type:            
+            # Create an empty Relation
+            flist_tmp = self.conn.sql("select * from flist_ref limit 0")
+            for ftype in self.type:
+                # Filter each filetype
+                flist_proc = flist_ref.filter ("type = '{}'".format(ftype))
+                # Find what's new
+                flist_new = flist_proc.except_(flist_tmp)
+                # Add result to the cummulative list
+                flist_tmp = flist_tmp.union(flist_new)
+            # Update flist_ref
+            flist = flist_empty.union(flist_tmp)
 
         # Filter on visibilty (no visibility means all)
         if self.visibility:
@@ -262,6 +279,7 @@ class FileSet:
         tz = pytz.timezone('Brazil/East')
         new_meta = {
             'filename' : meta['filename'],
+            'type' : meta['type'],
             'path' : meta['local_path'],
             'origin' : [origin],
             'tags' : meta['tags'],

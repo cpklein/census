@@ -404,12 +404,13 @@ def receive_json():
         with open(os.path.join(file_dir, local_path, meta['filename']), 'w') as f_out:
             f_out.write(data_str)
         # Create the meta file
+        meta['type'] = 'json'
         fset.new_file(meta, 'json')
         resp = {"filename" : os.path.join(local_path, meta['filename'])}
         app.logger.debug("saved json:" + meta['filename'] + " bytes:" + str(len(data_str)))
     except Exception as error:
-        resp = {"error" : error.args[1]}
-        app.logger.warning("error saving json:" + meta['filename'] + " error:" + error.args[1])
+        resp = {"error" : error.args}
+        app.logger.warning("error saving json:" + meta['filename'] + " error:" + error.args)
     return jsonify(resp)
 
 #List files directory - Only files
@@ -425,6 +426,39 @@ def list_files():
     
     app.logger.debug("list files directory:" + os.path.join(file_dir, subdir))
         
+    return jsonify(resp)
+
+#Import files directory
+@app.route('/files/import', methods = ['POST'])
+def import_files():
+    global fset
+    body = request.get_json()
+    meta = body.get('meta')
+    subdir = '/'.join(meta['local_path'])
+    imported = []
+    # Get the file list
+    try:
+        files = [f for f in os.listdir(os.path.join(file_dir, subdir)) if os.path.isfile(os.path.join(os.path.join(file_dir, subdir), f))]
+    except Exception as error:
+        resp = {"error" : error.args[1]}
+        return jsonify(resp)
+    
+    # Create metadata for each file
+    for file in files:
+        # Remove metadata files
+        if not file.startswith("."):                
+            meta['filename'] = file
+            path, ext = os.path.splitext(file)
+            # Known file extensions
+            if ext in KNOWN_EXTENSIONS:
+                meta['type'] = ext.replace('.', '')
+            # Create
+            fset.new_file(meta, 'import')
+            # Update imported file list
+            imported.append(file)
+        
+    app.logger.debug("imported files in:" + os.path.join(file_dir, subdir))
+    resp = { "imported" : imported}   
     return jsonify(resp)
 
 #List files directory - Only files
