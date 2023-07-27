@@ -254,6 +254,8 @@ class FileSet:
         if self.origin:            
             # Create an empty Relation
             flist_tmp = self.conn.sql("select * from flist_ref limit 0")
+            ### TO DO
+            ### Replace this search with list_has_any fnested function from duckdb!
             for origin in self.origin:
                 # Filter each origin
                 flist_proc = flist.filter ("list_contains(origin, '{}')".format(origin))

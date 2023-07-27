@@ -140,6 +140,7 @@ def get_http_file():
     body = request.get_json()
     # If extract == true, unzip the file at the end
     extract = request.args.get('extract', 'false')
+    meta = body['meta']
     if extract == 'true':
         unzip = True
     else:
@@ -213,22 +214,46 @@ def get_http_file():
                         
         # Process only with 200 code
         if stream.status_code == 200:
+            flist = []
             with open(filename, 'wb') as fd:
                 for chunk in stream.iter_content(chunk_size=chunk_size):
                     fd.write(chunk)
+            # Add the main file
+            flist.append(body['file']['filename'])
             resp["status"] = "transfered"
             app.logger.debug("HTTP File Transfered Succeeded - Filename:" + filename)
             if unzip:
                 with ZipFile(filename) as myzip:
+                    # Get all the flenames for metadata
+                    for file_info in myzip.filelist:
+                        flist.append(file_info.filename)
                     myzip.extractall(path=os.path.join(file_dir,
                                                         body['file']['local_path']))
                 app.logger.debug("File unzipped")
+            # Create metadata for each file
+            imported = []
+            for file in flist:
+                # Remove metadata files
+                if not file.startswith("."):                
+                    meta['filename'] = file
+                    path, ext = os.path.splitext(file)
+                    # Known file extensions
+                    if ext in KNOWN_EXTENSIONS:
+                        meta['type'] = ext.replace('.', '')
+                        # Create
+                        fset.new_file(meta, 'http')
+                        # Update imported file list
+                        imported.append(file)
+
+            app.logger.debug("http files to:" + os.path.join(file_dir, body['file']['local_path']))
+            resp = { "imported" : imported}   
+                
         else:
             resp["error"] = stream.text
             app.logger.warning("Error on HTTP File Request: " + stream.text)
     except Exception as error:
-        resp["error"] = error.args[1]
-        app.logger.warning("Error :" + error.args[1])
+        resp["error"] = error.args
+        app.logger.warning("Error :" + json.dumps(error.args))
     
     return jsonify(resp)
             
