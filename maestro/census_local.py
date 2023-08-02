@@ -3,6 +3,7 @@ import socket
 import os
 
 KNOWN_EXTENSIONS = ['.json', '.csv', '.parquet', '.zip']
+CHUNK_SIZE = 1024
 census_id = socket.gethostname() 
 
 # development environment

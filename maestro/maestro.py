@@ -141,6 +141,9 @@ def get_http_file():
     # If extract == true, unzip the file at the end
     extract = request.args.get('extract', 'false')
     meta = body['meta']
+    local_path = '/'.join(meta['local_path'])
+    full_filename = os.path.join(file_dir, local_path, meta['filename'])
+    
     if extract == 'true':
         unzip = True
     else:
@@ -189,12 +192,7 @@ def get_http_file():
         insert_token()
     else:
         auth = None
-    #File
-    filename = os.path.join(file_dir, body['file']['local_path'], body['file']['filename'])
-    
-    #Chunk Size
-    chunk_size = body['file']['chunck_size']
-    
+        
     # Response
     resp = {}
     try:        
@@ -215,27 +213,29 @@ def get_http_file():
         # Process only with 200 code
         if stream.status_code == 200:
             flist = []
-            with open(filename, 'wb') as fd:
-                for chunk in stream.iter_content(chunk_size=chunk_size):
+            with open(full_filename, 'wb') as fd:
+                for chunk in stream.iter_content(chunk_size=CHUNK_SIZE):
                     fd.write(chunk)
             # Add the main file
-            flist.append(body['file']['filename'])
+            flist.append(meta['filename'])
             resp["status"] = "transfered"
-            app.logger.debug("HTTP File Transfered Succeeded - Filename:" + filename)
+            app.logger.debug("HTTP File Transfered Succeeded - Filename:" + full_filename)
             if unzip:
-                with ZipFile(filename) as myzip:
-                    # Get all the flenames for metadata
+                with ZipFile(full_filename) as myzip:
+                    # Get all the filenames for metadata
                     for file_info in myzip.filelist:
                         flist.append(file_info.filename)
                     myzip.extractall(path=os.path.join(file_dir,
-                                                        body['file']['local_path']))
+                                                        local_path))
                 app.logger.debug("File unzipped")
             # Create metadata for each file
             imported = []
             for file in flist:
-                # Remove metadata files
-                if not file.startswith("."):                
+                # Skip metadata files that start with .
+                if not file.startswith("."):
+                    # Overwrite filename with the filename of each file within the extraction
                     meta['filename'] = file
+                    # We don't know the extension of the extracted files, get it!
                     path, ext = os.path.splitext(file)
                     # Known file extensions
                     if ext in KNOWN_EXTENSIONS:
@@ -245,7 +245,7 @@ def get_http_file():
                         # Update imported file list
                         imported.append(file)
 
-            app.logger.debug("http files to:" + os.path.join(file_dir, body['file']['local_path']))
+            app.logger.debug("http files to:" + os.path.join(file_dir, local_path))
             resp = { "imported" : imported}   
                 
         else:

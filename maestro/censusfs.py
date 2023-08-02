@@ -152,6 +152,13 @@ class FileSet:
         else:
             flist = flist.union(flist_ref)
 
+
+        ### TO DO
+        ### Replace list searches with list_has_any nested function from duckdb!
+        ### tags = ['import', 'http']
+        ### f = f.filter("list_has_any(origin::VARCHAR[], {})".format(tags))
+        ### list_has_any will be available in 0.8.2 (code already tested with nightly builts)!!!
+        
         # Filter on type
         if self.type:            
             # Create an empty Relation
@@ -254,8 +261,6 @@ class FileSet:
         if self.origin:            
             # Create an empty Relation
             flist_tmp = self.conn.sql("select * from flist_ref limit 0")
-            ### TO DO
-            ### Replace this search with list_has_any fnested function from duckdb!
             for origin in self.origin:
                 # Filter each origin
                 flist_proc = flist.filter ("list_contains(origin, '{}')".format(origin))
