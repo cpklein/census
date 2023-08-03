@@ -348,6 +348,10 @@ def sql_execute(database):
             close_duck_conn(database)
             return jsonify(resp)
 
+        if file_filter:
+            # Update metadata
+            meta_update = { 'processed' : True }
+            fset.update_file(meta_update, file_filter['user'])
         # Deal with DuckDB Relation
         if result != None:
             fetchmany = request.args.get('fetchmany', None)

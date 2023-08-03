@@ -18,6 +18,7 @@ class FileSet:
         self.filelist = []
         self.filelist_full = []
         self.filenames = []
+        self.pattern = ''
         self.type = []
         self.base_path = []
         self.recursive = True
@@ -46,6 +47,7 @@ class FileSet:
     def update_filter(self, file_filter):
         #Update filter values
         self.filenames = file_filter.get('filenames', self.filenames)
+        self.pattern =  file_filter.get('pattern', self.pattern)
         self.type = file_filter.get('type', self.type)
         self.base_path = file_filter.get('base_path', self.base_path)
         self.recursive = file_filter.get('recursive', self.recursive)
@@ -152,6 +154,9 @@ class FileSet:
         else:
             flist = flist.union(flist_ref)
 
+        # Filter on GLOB (filename regex)
+        if self.pattern:
+            flist = flist.filter("filename GLOB '{}'".format(self.pattern))
 
         ### TO DO
         ### Replace list searches with list_has_any nested function from duckdb!
@@ -165,7 +170,7 @@ class FileSet:
             flist_tmp = self.conn.sql("select * from flist_ref limit 0")
             for ftype in self.type:
                 # Filter each filetype
-                flist_proc = flist_ref.filter ("type = '{}'".format(ftype))
+                flist_proc = flist.filter ("type = '{}'".format(ftype))
                 # Find what's new
                 flist_new = flist_proc.except_(flist_tmp)
                 # Add result to the cummulative list
@@ -276,7 +281,7 @@ class FileSet:
         flist_list = flist_sql.fetchall()
         self.filelist = [ os.path.join(file_dir, path, file) for file, path in flist_list]
 
-        #Build flist_full - array with files
+        #Build flist_full - json array with files
         resp = flist.fetchall()
         columns = flist.columns
         self.filelist_full =  [dict(zip(columns,register)) for register in resp]
@@ -290,8 +295,8 @@ class FileSet:
             'path' : meta['local_path'],
             'origin' : [origin],
             'tags' : meta['tags'],
-            'created' : datetime.datetime.now(tz=tz).strftime('%Y-%m-%d %H:%M:%S.%f%Z'),
-            'removed' : '2100-01-01 00:00:00.000000-00',
+            'created' : datetime.datetime.now(tz=tz).strftime('%Y-%m-%d %H:%M:%S.%f%z'),
+            'removed' : '2100-01-01 00:00:00.000000-0000',
             'hidden' : False,
             'processed' : False,
             'owner' : meta['user'],
@@ -318,3 +323,36 @@ class FileSet:
         except Exception as error:
             fsys_logger.debug(error)
 
+    # meta contains all fields that must be changed. all items not specified should be kept unchanged
+    def update_file(self, meta, user):
+        tz = pytz.timezone('Brazil/East')
+        # Assume the list of files has been already selected. With multi-access THIS MUST CHANGE
+        for file in self.filelist_full:
+            # change only the keys specified in meta
+            for param in meta.keys():
+                file[param] = meta[param]
+            # Forced updates
+            file['changed_by'] = user
+            # We must change UTC time to string
+            time_ = file['created'].replace(tzinfo=pytz.UTC).astimezone(tz=tz)
+            file['created'] = time_.strftime('%Y-%m-%d %H:%M:%S.%f%z')
+            time_ = file['removed'].replace(tzinfo=pytz.UTC).astimezone(tz=tz)
+            file['removed'] = time_.strftime('%Y-%m-%d %H:%M:%S.%f%z')
+            
+            
+            meta_data = json.dumps([file], indent=4)
+            local_path = '/'.join(file['path'])
+            filename = '.' + file['filename'] + '.json'
+            full_filename = os.path.join(self.file_dir, local_path, filename)
+    
+            # Write the json file
+            with open(full_filename, 'w') as f_out:
+                f_out.write(meta_data)
+    
+            # Update fset
+            # Remove if there is the same file already there        
+            try:
+                self.conn.execute("DELETE FROM fset WHERE array_to_string(path, '/') = '{}' AND filename = '{}'".format(local_path, file['filename']))
+                self.conn.execute("INSERT INTO fset SELECT * FROM read_json('{}', auto_detect=true, union_by_name=true)".format(full_filename))
+            except Exception as error:
+                fsys_logger.error(error)
