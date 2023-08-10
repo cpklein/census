@@ -1,7 +1,7 @@
 import os
 import pytz
 import datetime
-#import re
+import re
 import duckdb
 import logging
 import json
@@ -68,7 +68,7 @@ class FileSet:
         
     def build_tree(self):
         # Retrieve all files from the base_path
-        # If recurvise, look for all subdirectories
+        # If recursive, look for all subdirectories
         if self.recursive:
             # build the base path from user
             path = ''
@@ -116,15 +116,16 @@ class FileSet:
         # Read .*.json from all directories
         for path in self.tree:
             # check if there are metadata files, otherwise break 
-            #files = [f for f in os.listdir(path) if (os.path.isfile(os.path.join(path, f))
-            #                                         and re.match(r'\B\..*\.json\Z', f))]
-            req = path + "/.*.json"
-            try:
-                self.conn.execute("""INSERT INTO fset SELECT * FROM read_json($dir, auto_detect=true, union_by_name=true)""",
-                            { "dir" : req }
-                )
-            except Exception as error:
-                fsys_logger.debug(error)
+            files = [f for f in os.listdir(path) if (os.path.isfile(os.path.join(path, f))
+                                                     and re.match(r'\B\..*\.json\Z', f))]
+            if files:
+                req = os.path.join(path , ".*.json")
+                try:
+                    self.conn.execute("""INSERT INTO fset SELECT * FROM read_json($dir, auto_detect=true, union_by_name=true)""",
+                                { "dir" : req }
+                    )
+                except Exception as error:
+                    fsys_logger.debug(error)
                 
     def get_files(self, file_filter):
         #Update filter values if filter is provided
